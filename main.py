@@ -35,7 +35,9 @@ from webdriver_manager.chrome import ChromeDriverManager as CDM
 from datetime import datetime as dt
 from glob import glob
 import os
-
+# added by shawn
+import traceback
+import time
 
 """Colorama module constants."""
 # This module may not work under MacOS.
@@ -278,11 +280,14 @@ class Wallets:
     """Allows connection to OpenSea with different wallets."""
 
     def __init__(self, wallet: int, password: int,
-                         recovery_phrase: str) -> None:
+                         recovery_phrase: str,
+                 #added by shawn
+                 wallet_account: int) -> None:
         """Get the wallet and connect to the extension/etc."""
         self.recovery_phrase = recovery_phrase  # Get the phrase.
         self.password = password  # Get the new/same password.
         self.wallet = wallet.lower().replace(' ', '_')  # Wallet user choice.
+        self.wallet_account = wallet_account  # Wallet account,added by shawn.
 
     def contract(self) -> None:
         """Use the method of the wallet to sign the contract."""
@@ -317,6 +322,20 @@ class Wallets:
             web.visible('//*[contains(@class, "emoji")][position()=1]')
             web.clickable('//*[contains(@class, "btn-primary")][position()=1]')
             print(f'{green}Logged to MetaMask.{reset}')
+            # 切换账号 added by shawn
+            print(f'{green}Switch account.{reset}')
+            web.clickable('//*[contains(@class, "popover-header__button")][position()=1]')
+            if self.wallet_account > 1:
+                for i in range(self.wallet_account-1):
+                    web.driver.get(web.driver.current_url + "new-account")
+                    web.clickable('//*[contains(@class, "btn-secondary")][position()=1]')
+                    time.sleep(1)
+                    print(f'{green}Account={i}.{reset}')
+                print(f'{green}Switched to Account{self.wallet_account}.{reset}')
+                exit
+            else:
+                print(f'{green}Use default Account1.{reset}')
+            #added by shawn end
         except Exception:  # Failed - a web element is not accessible.
             print(f'{red}Login to MetaMask failed, retrying...{reset}')
             self.metamask_login()
@@ -567,44 +586,44 @@ class OpenSea:
                                     '//*[@id="reservedBuyerAddressOrEns'
                                     'Name"]', structure.specific_buyer[1])
             web.send_keys('//*[@name="price"]', format(structure.price, '.8f'))
-            if isinstance(structure.duration, str):  # Transform to a list.
-                structure.duration = [structure.duration]
-            if isinstance(structure.duration, list):  # List of 1 or 2 values.
-                if len(structure.duration) == 2:  # From {date} to {date}.
-                    from datetime import datetime as dt  # Default import.
-                    # Check if duration is less than 6 months.
-                    if (dt.strptime(structure.duration[1], date) -
-                            dt.strptime(structure.duration[0], date
-                                        )).total_seconds() / 60 > 262146:
-                        raise TE('Duration must be less than 6 months.')
-                    # Check if starting date has passed.
-                    if dt.strptime(dt.strftime(dt.now(), date), date) \
-                            > dt.strptime(structure.duration[0], date):
-                        raise TE('Starting date has passed.')
-                    # Split the date and the time.
-                    start_date, start_time = structure.duration[0].split(' ')
-                    end_date, end_time = structure.duration[1].split(' ')
-                    web.clickable('//*[@id="duration"]')  # Date button.
-                    web.visible(  # Scroll to the pop up frame of the date.
-                        '//*[@role="dialog"]').location_once_scrolled_into_view
-                    web.send_date('//*[@role="dialog"]'  # Ending date.
-                                  '/div[2]/div[2]/div/div[2]/input', end_date)
-                    web.send_date('//*[@role="dialog"]/'  # Starting date.
-                                  'div[2]/div[1]/div/div[2]/input', start_date)
-                    web.send_date('//*[@id="end-time"]', end_time)  # End date.
-                    web.send_date('//*[@id="start-time"]',  # Starting date +
-                                  f'{start_time}{Keys.ENTER}')  # close frame.
-                elif len(structure.duration) == 1:  # In {n} days/week/months.
-                    if structure.duration[0] == '':  # Duration not specified.
-                        raise TE('Duration must be specified.')
-                    if web.visible('//*[@id="duration"]/div[2]').text \
-                            != structure.duration[0]:  # Not default.
-                        web.clickable('//*[@id="duration"]')  # Date button.
-                        web.clickable('//*[@role="dialog"]'  # Duration Range
-                                      '/div[1]/div/div[2]/input')  # sheet.
-                        web.clickable('//span[contains(text(), '   # Date span.
-                                      f'"{structure.duration[0]}")]/../..')
-                        web.send_keys('//*[@role="dialog"]', Keys.ENTER)
+            # if isinstance(structure.duration, str):  # Transform to a list.
+            #     structure.duration = [structure.duration]
+            # if isinstance(structure.duration, list):  # List of 1 or 2 values.
+            #     if len(structure.duration) == 2:  # From {date} to {date}.
+            #         from datetime import datetime as dt  # Default import.
+            #         # Check if duration is less than 6 months.
+            #         if (dt.strptime(structure.duration[1], date) -
+            #                 dt.strptime(structure.duration[0], date
+            #                             )).total_seconds() / 60 > 262146:
+            #             raise TE('Duration must be less than 6 months.')
+            #         # Check if starting date has passed.
+            #         if dt.strptime(dt.strftime(dt.now(), date), date) \
+            #                 > dt.strptime(structure.duration[0], date):
+            #             raise TE('Starting date has passed.')
+            #         # Split the date and the time.
+            #         start_date, start_time = structure.duration[0].split(' ')
+            #         end_date, end_time = structure.duration[1].split(' ')
+            #         web.clickable('//*[@id="duration"]')  # Date button.
+            #         web.visible(  # Scroll to the pop up frame of the date.
+            #             '//*[@role="dialog"]').location_once_scrolled_into_view
+            #         web.send_date('//*[@role="dialog"]'  # Ending date.
+            #                       '/div[2]/div[2]/div/div[2]/input', end_date)
+            #         web.send_date('//*[@role="dialog"]/'  # Starting date.
+            #                       'div[2]/div[1]/div/div[2]/input', start_date)
+            #         web.send_date('//*[@id="end-time"]', end_time)  # End date.
+            #         web.send_date('//*[@id="start-time"]',  # Starting date +
+            #                       f'{start_time}{Keys.ENTER}')  # close frame.
+            #     elif len(structure.duration) == 1:  # In {n} days/week/months.
+            #         if structure.duration[0] == '':  # Duration not specified.
+            #             raise TE('Duration must be specified.')
+            #         if web.visible('//*[@id="duration"]/div[2]').text \
+            #                 != structure.duration[0]:  # Not default.
+            #             web.clickable('//*[@id="duration"]')  # Date button.
+            #             web.clickable('//*[@role="dialog"]'  # Duration Range
+            #                           '/div[1]/div/div[2]/input')  # sheet.
+            #             web.clickable('//span[contains(text(), '   # Date span.
+            #                           f'"{structure.duration[0]}")]/../..')
+            #             web.send_keys('//*[@role="dialog"]', Keys.ENTER)
             try:  # Click on the "Complete listing" (submit) button.
                 web.clickable('//button[@type="submit"]')
             except Exception:  # An unknown error has occured.
@@ -626,6 +645,7 @@ class OpenSea:
                 raise TE('The NFT is not listed.')
         except Exception as error:  # Failed, an error has occured.
             print(f'{red}NFT sale cancelled.{reset} {error}')
+            traceback.print_exc()
 
 
 def choose_wallet() -> int:
@@ -712,26 +732,28 @@ if __name__ == '__main__':
 
     cls()  # Clear console.
 
-    print(f'{green}Created by Maxime Dréan.'
-          '\nGithub: https://github.com/maximedrn'
-          '\nTelegram: https://t.me/maximedrn'
-          '\n\nCopyright © 2022 Maxime Dréan. All rights reserved.'
-          '\nAny distribution, modification or commercial use is strictly'
-          ' prohibited.'
-          f'\n\nVersion 1.4.9 - 2022, 13 February.\n{reset}'
-          '\nIf you face any problem, please open an issue.')
+    # print(f'{green}Created by Maxime Dréan.'
+    #       '\nGithub: https://github.com/maximedrn'
+    #       '\nTelegram: https://t.me/maximedrn'
+    #       '\n\nCopyright © 2022 Maxime Dréan. All rights reserved.'
+    #       '\nAny distribution, modification or commercial use is strictly'
+    #       ' prohibited.'
+    #       f'\n\nVersion 1.4.9 - 2022, 13 February.\n{reset}'
+    #       '\nIf you face any problem, please open an issue.')
 
     input('\nPRESS [ENTER] TO CONTINUE. ')
     cls()  # Clear console.
 
-    print(f'{green}Created by Maxime Dréan.'
-          '\n\nCopyright © 2022 Maxime Dréan. All rights reserved.'
-          '\nAny distribution, modification or commercial use is strictly'
-          f' prohibited.{reset}')
+    # print(f'{green}Created by Maxime Dréan.'
+    #       '\n\nCopyright © 2022 Maxime Dréan. All rights reserved.'
+    #       '\nAny distribution, modification or commercial use is strictly'
+    #       f' prohibited.{reset}')
     
     wallet = Wallets(choose_wallet(),  # Send the password / recovery phrase.
         read_file('password', '\nWhat is your MetaMask password? '), read_file(
-            'recovery_phrase', '\nWhat is your MetaMask recovery phrase? '))
+            'recovery_phrase', '\nWhat is your MetaMask recovery phrase? '),
+                     #added by shawn
+                     int(input('\nWhich account do you want use?')))
     action = perform_action()  # What the user wants to do.
     reader = Reader(data_file())  # Ask for a file and read it.
     structure = Structure(action)
