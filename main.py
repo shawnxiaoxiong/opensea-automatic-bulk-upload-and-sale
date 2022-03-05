@@ -95,12 +95,17 @@ class Structure:
         self.file = reader.file.copy()  # File data copy.
         self.extension = reader.extension  # File extension copy.
         self.action = action  # 1, 2 or 1 and 2.
-        if 1 in self.action and 2 not in self.action:
-            from uuid import uuid4  # A Python default import.
-            self.save_file = f'data/{str(uuid4())[:8]}.csv'
-            with open(self.save_file, 'a+', encoding='utf-8') as file:
-                file.write('nft_url;; supply;; blockchain;; type;; price;; '
-                           'method;; duration;; specific_buyer;; quantity')
+        # modified by shawn
+        # if 1 in self.action and 2 not in self.action:
+        #     from uuid import uuid4  # A Python default import.
+        #     self.save_file = f'data/{str(uuid4())[:8]}.csv'
+        #     with open(self.save_file, 'a+', encoding='utf-8') as file:
+        #         file.write('nft_url;; supply;; blockchain;; type;; price;; '
+        #                    'method;; duration;; specific_buyer;; quantity')
+        old_file_name = os.path.basename(reader.path).split('.')[0]
+        pre_name = dt.now().strftime("%Y%m%d-%H%M%S")
+        suf_name = old_file_name if '-' not in old_file_name else old_file_name.split('-')[2]
+        self.save_file = f'data/{pre_name}-{suf_name}.csv'
 
     def get_data(self, nft_number: int) -> None:
         """Get NFT's data."""
@@ -177,7 +182,8 @@ class Structure:
             self.explicit_and_sensitive_content: bool = nft_data[9]
             self.supply: int = nft_data[10]
             self.blockchain: str = str(nft_data[11]).capitalize()
-        if 2 in self.action:  # Sale part.
+        #modified by shawn
+        #if 2 in self.action:  # Sale part.
             self.type: str = str(nft_data[12 - index]).title()
             self.price: float or int = nft_data[13 - index]
             self.method: list = nft_data[14 - index]  # [method, price].
@@ -188,6 +194,15 @@ class Structure:
             self.nft_url: str = str(nft_data[0])
             self.supply: int = nft_data[1]
             self.blockchain: str = str(nft_data[2]).capitalize()
+            #added by shawn
+            self.type: str = str(nft_data[3]).title()
+            self.price: float or int = nft_data[4]
+            self.method: list = nft_data[5]  # [method, price].
+            self.duration: list or str = nft_data[6]
+            self.specific_buyer: list or bool = nft_data[7]
+            self.quantity: int = nft_data[8]
+            self.nft_name: int = nft_data[9]
+
 
     def is_empty(self, element: str, data: str, value: str = '') -> bool:
         """Check if data is empty and input its value."""
@@ -199,10 +214,20 @@ class Structure:
     def save_nft(self, url) -> None:
         """Save the NFT URL, Blockchain and supply number in a file."""
         # Note: only CSV file will be created.
+        # added by shawn
+        if not os.path.exists(self.save_file):
+            with open(self.save_file, 'a+', encoding='utf-8') as file:
+                file.write('nft_url;; supply;; blockchain;; type;; price;; '
+                           'method;; duration;; specific_buyer;; quantity;; nft_name;;')
         with open(self.save_file, 'a+', encoding='utf-8') as file:
+            # modified by shawn
+            # file.write(f'\n{url};; {self.supply};; {self.blockchain};;'
+            #            ' ;; ;; ;; ;; ;;')  # Complete data manually.
             file.write(f'\n{url};; {self.supply};; {self.blockchain};;'
-                       ' ;; ;; ;; ;; ;;')  # Complete data manually.
+                       f' {self.type};; {self.price};; {self.method};; {self.duration};; ;;'
+                       f' {self.quantity};; {self.nft_name};;') # Complete data manually.
         print(f'{green}Data saved in {self.save_file}')
+
 
 
 class Webdriver:
@@ -502,11 +527,14 @@ class OpenSea:
             WDW(web.driver, 30).until(lambda _: web.driver.current_url !=
                                       self.create_url + '?enable_supply=true')
             print(f'{green}NFT uploaded.{reset}')
-            if 2 not in structure.action:  # Save the data for future upload.
-                structure.save_nft(web.driver.current_url)
+            # modified by shawn
+            # if 2 not in structure.action:  # Save the data for future upload.
+            #     structure.save_nft(web.driver.current_url)
+            structure.save_nft(web.driver.current_url)
             return True  # If it perfectly worked.
         except Exception as error:  # An element is not reachable.
-            print(f'{red}An error occured.{reset} {error}')
+            print(f'{red}Upload error occured.{reset} {error}')
+            traceback.print_exc()
             return False  # If it failed.
 
     def sale(self, number: int, date: str = '%d-%m-%Y %H:%M') -> None:
@@ -586,44 +614,44 @@ class OpenSea:
                                     '//*[@id="reservedBuyerAddressOrEns'
                                     'Name"]', structure.specific_buyer[1])
             web.send_keys('//*[@name="price"]', format(structure.price, '.8f'))
-            # if isinstance(structure.duration, str):  # Transform to a list.
-            #     structure.duration = [structure.duration]
-            # if isinstance(structure.duration, list):  # List of 1 or 2 values.
-            #     if len(structure.duration) == 2:  # From {date} to {date}.
-            #         from datetime import datetime as dt  # Default import.
-            #         # Check if duration is less than 6 months.
-            #         if (dt.strptime(structure.duration[1], date) -
-            #                 dt.strptime(structure.duration[0], date
-            #                             )).total_seconds() / 60 > 262146:
-            #             raise TE('Duration must be less than 6 months.')
-            #         # Check if starting date has passed.
-            #         if dt.strptime(dt.strftime(dt.now(), date), date) \
-            #                 > dt.strptime(structure.duration[0], date):
-            #             raise TE('Starting date has passed.')
-            #         # Split the date and the time.
-            #         start_date, start_time = structure.duration[0].split(' ')
-            #         end_date, end_time = structure.duration[1].split(' ')
-            #         web.clickable('//*[@id="duration"]')  # Date button.
-            #         web.visible(  # Scroll to the pop up frame of the date.
-            #             '//*[@role="dialog"]').location_once_scrolled_into_view
-            #         web.send_date('//*[@role="dialog"]'  # Ending date.
-            #                       '/div[2]/div[2]/div/div[2]/input', end_date)
-            #         web.send_date('//*[@role="dialog"]/'  # Starting date.
-            #                       'div[2]/div[1]/div/div[2]/input', start_date)
-            #         web.send_date('//*[@id="end-time"]', end_time)  # End date.
-            #         web.send_date('//*[@id="start-time"]',  # Starting date +
-            #                       f'{start_time}{Keys.ENTER}')  # close frame.
-            #     elif len(structure.duration) == 1:  # In {n} days/week/months.
-            #         if structure.duration[0] == '':  # Duration not specified.
-            #             raise TE('Duration must be specified.')
-            #         if web.visible('//*[@id="duration"]/div[2]').text \
-            #                 != structure.duration[0]:  # Not default.
-            #             web.clickable('//*[@id="duration"]')  # Date button.
-            #             web.clickable('//*[@role="dialog"]'  # Duration Range
-            #                           '/div[1]/div/div[2]/input')  # sheet.
-            #             web.clickable('//span[contains(text(), '   # Date span.
-            #                           f'"{structure.duration[0]}")]/../..')
-            #             web.send_keys('//*[@role="dialog"]', Keys.ENTER)
+            if isinstance(structure.duration, str):  # Transform to a list.
+                structure.duration = [structure.duration]
+            if isinstance(structure.duration, list):  # List of 1 or 2 values.
+                if len(structure.duration) == 2:  # From {date} to {date}.
+                    from datetime import datetime as dt  # Default import.
+                    # Check if duration is less than 6 months.
+                    if (dt.strptime(structure.duration[1], date) -
+                            dt.strptime(structure.duration[0], date
+                                        )).total_seconds() / 60 > 262146:
+                        raise TE('Duration must be less than 6 months.')
+                    # Check if starting date has passed.
+                    if dt.strptime(dt.strftime(dt.now(), date), date) \
+                            > dt.strptime(structure.duration[0], date):
+                        raise TE('Starting date has passed.')
+                    # Split the date and the time.
+                    start_date, start_time = structure.duration[0].split(' ')
+                    end_date, end_time = structure.duration[1].split(' ')
+                    web.clickable('//*[@id="duration"]')  # Date button.
+                    web.visible(  # Scroll to the pop up frame of the date.
+                        '//*[@role="dialog"]').location_once_scrolled_into_view
+                    web.send_date('//*[@role="dialog"]'  # Ending date.
+                                  '/div[2]/div[2]/div/div[2]/input', end_date)
+                    web.send_date('//*[@role="dialog"]/'  # Starting date.
+                                  'div[2]/div[1]/div/div[2]/input', start_date)
+                    web.send_date('//*[@id="end-time"]', end_time)  # End date.
+                    web.send_date('//*[@id="start-time"]',  # Starting date +
+                                  f'{start_time}{Keys.ENTER}')  # close frame.
+                elif len(structure.duration) == 1:  # In {n} days/week/months.
+                    if structure.duration[0] == '':  # Duration not specified.
+                        raise TE('Duration must be specified.')
+                    if web.visible('//*[@id="duration"]/div[2]').text \
+                            != structure.duration[0]:  # Not default.
+                        web.clickable('//*[@id="duration"]')  # Date button.
+                        web.clickable('//*[@role="dialog"]'  # Duration Range
+                                      '/div[1]/div/div[2]/input')  # sheet.
+                        web.clickable('//span[contains(text(), '   # Date span.
+                                      f'"{structure.duration[0]}")]/../..')
+                        web.send_keys('//*[@role="dialog"]', Keys.ENTER)
             try:  # Click on the "Complete listing" (submit) button.
                 web.clickable('//button[@type="submit"]')
             except Exception:  # An unknown error has occured.
@@ -641,6 +669,11 @@ class OpenSea:
             try:  # Wait until the NFT is listed.
                 web.visible('//header/h4')  # "Your NFT is listed!".
                 print(f'{green}NFT put up for sale.{reset}')
+                #added by shawn
+                if 1 not in structure.action:
+                    os.remove(reader.path)
+                    print(f'{green}Remove the old file {reader.path}.{reset}')
+                structure.save_nft(web.driver.current_url)
             except Exception:  # An error occured while listing the NFT.
                 raise TE('The NFT is not listed.')
         except Exception as error:  # Failed, an error has occured.
@@ -701,8 +734,14 @@ def data_file() -> str:
     while True:
         file_number, files_list = 0, []
         print(f'{yellow}\nChoose your file:{reset}\n0 - Browse a file on PC.')
+        #added by shawn
+        from datetime import timedelta as td
+        pre_csv = (dt.today() - td(days=30)).strftime('%Y%m%d-')
+
         for files in [glob(f'data/{extension}')  # Files of the data folder.
-                      for extension in ['*.json', '*.csv', '*.xlsx']]:
+                      # modifyed by shawn
+                      # for extension in ['*.json', '*.csv', '*.xlsx']]:
+                      for extension in ['*.json', f'{pre_csv}*.csv', '*.xlsx']]:
             for file in files:
                 file_number += 1
                 files_list.append(file)
