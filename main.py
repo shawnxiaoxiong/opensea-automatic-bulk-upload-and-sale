@@ -524,7 +524,7 @@ class OpenSea:
                 structure.blockchain = 'Ethereum'
             web.clickable('(//div[contains(@class, "submit")])'  # Click on the
                           '[position()=1]/div/span/button')  # "Create" button.
-            WDW(web.driver, 30).until(lambda _: web.driver.current_url !=
+            WDW(web.driver, 60).until(lambda _: web.driver.current_url !=
                                       self.create_url + '?enable_supply=true')
             print(f'{green}NFT uploaded.{reset}')
             # modified by shawn
@@ -673,7 +673,7 @@ class OpenSea:
                 if 1 not in structure.action:
                     os.remove(reader.path)
                     print(f'{green}Remove the old file {reader.path}.{reset}')
-                structure.save_nft(web.driver.current_url)
+                    structure.save_nft(web.driver.current_url.replace('/sell',''))
             except Exception:  # An error occured while listing the NFT.
                 raise TE('The NFT is not listed.')
         except Exception as error:  # Failed, an error has occured.
